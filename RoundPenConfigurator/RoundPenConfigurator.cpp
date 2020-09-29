@@ -11,7 +11,9 @@
 #include "tinyfiledialogs.h"
 
 using namespace std;
+
 const int updateEveryXFrames = 20;
+const int configHeight = 200;
 
 int main()
 {
@@ -53,10 +55,10 @@ int main()
 	double h1 = 1900 * (frame.rows / (double)frame.cols);
 	double w2 = 780 * (frame.cols / (double)frame.rows);
 	if (h1 <= 780) {
-		cv::resize(frame, frame, cv::Size(1900, h1));
+		cv::resize(frame, frame, cv::Size(1900, (int) h1));
 	}
 	else {
-		cv::resize(frame, frame, cv::Size(w2, 780));
+		cv::resize(frame, frame, cv::Size((int) w2, 780));
 	}
 
 	cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
@@ -64,43 +66,78 @@ int main()
 
     cvui::init("RoundPen Configurator");
 
+	// Variable to stop application.
     bool running = true;
+
+	// Error message to print.
 	char errorMsg[128];
-	char saveMsg[128];
-	bool colorSet = false;
 	errorMsg[0] = 0;
+
+	// Save message to print.
+	char saveMsg[128];
 	saveMsg[0] = 0;
-	char namesCursor = '|';
+
+	// Variable to check if user have set a color for current marker.
+	bool colorSet = false;
+
+	// UI Padding for config.
+	int padding;
+
+	// Cursor blinking. Will change to '' after x frames and back after 2x frames.
+	char cursor = '|';
+
+	// Counting frames for cursor blinking.
 	uint32_t frameNr = 0;
+
+	// Saving related variables.
+	// Just here so it doesnt need to be created multiple times.
 	int markersToSave;
+	char markerColorStringBuffer[10];
 	ofstream outfile;
+
     while (running) {
 		if (frameNr%updateEveryXFrames == 0) {
-			if (namesCursor == 0) {
-				namesCursor = '|';
+			if (cursor == 0) {
+				cursor = '|';
 			}
 			else {
-				namesCursor = 0;
+				cursor = 0;
 			}
 		}
         frame.copyTo(window);
-        cvui::text(window, 10, window.rows - 190, "Click on a pixel in the window to define a new marker.");
-        cvui::text(window, 10, window.rows - 170, "Controls: Left-Click = Select Color, Typing = Set Name, Enter = Next, CTRL+T = Save, Esc = Exit.");
-        cvui::printf(window, 10, window.rows - 150, "Markers: %s%c", namesBuffer, namesCursor);
-        cvui::text(window, 10, window.rows - 130, "Colors:");
+		padding = 10;
+        cvui::text(window, 10, window.rows - configHeight + padding, "Click on a pixel in the window to define a new marker.");
+		padding += 20;
+        cvui::text(window, 10, window.rows - configHeight + padding, "Controls: Left-Click = Select Color, Typing = Set Name, Enter = Next, CTRL+T = Save, Esc = Exit.");
+		padding += 20;
+        cvui::printf(window, 10, window.rows - configHeight + padding, "Markers: %s%c", namesBuffer, cursor);
+		padding += 20;
+        cvui::text(window, 10, window.rows - configHeight + padding, "Colors:");
         for (int i = 0; i < markersLength; i++) {
-            cvui::printf(window, 69 + 30*i, window.rows - 130, "%d", i);
+            cvui::printf(window, 69 + 30*i, window.rows - configHeight + padding, "%d", i);
 			int color = ((windowColors[i][0]) << 0) + ((windowColors[i][1]) << 8) + ((windowColors[i][2]) << 16);
-            cvui::rect(window, 79 + 30*i, window.rows - 132, 16, 16, 0, color);
+            cvui::rect(window, 79 + 30*i, window.rows - configHeight + padding - 2, 16, 16, 0, color);
         }
-		cvui::printf(window, 10, window.rows - 110, "Current color (HSV 360/100/100): %d %d %d", markerColors[markersLength-1][0]*2, markerColors[markersLength - 1][1]*100/256, markerColors[markersLength - 1][2]*100/256);
-		cvui::text(window, 10, window.rows - 90, errorMsg, 0.4, 0xff0000);
+		padding += 20;
+		cvui::printf(window, 10, window.rows - configHeight + padding, "Current color (HSV 360/100/100): %d %d %d", markerColors[markersLength-1][0]*2, markerColors[markersLength - 1][1]*100/256, markerColors[markersLength - 1][2]*100/256);
+		padding += 20;
+		cvui::text(window, 10, window.rows - configHeight + padding, errorMsg, 0.4, 0xff0000);
+		padding += 20;
 		cvui::text(window, 10, window.rows - 10, saveMsg, 0.4, 0xff00);
 
         if (cvui::mouse(cvui::IS_DOWN)) {
-			if (cvui::mouse().x >= 0 && cvui::mouse().x < hsv.cols && cvui::mouse().y >= 0 && cvui::mouse().y < hsv.rows) {
-				markerColors[markersLength - 1] = hsv.at<cv::Vec3b>(cv::Point(cvui::mouse().x, cvui::mouse().y));
-				windowColors[markersLength - 1] = window.at<cv::Vec3b>(cv::Point(cvui::mouse().x, cvui::mouse().y));
+			cv::Point pos(cvui::mouse().x, cvui::mouse().y);
+			if (pos.x >= 0 && pos.x < hsv.cols && pos.y >= 0 && pos.y < hsv.rows) {
+				markerColors[markersLength - 1] = hsv.at<cv::Vec3b>(pos);
+				windowColors[markersLength - 1] = window.at<cv::Vec3b>(pos);
+
+				if (pos.x > 15 && pos.y > 15) {
+					int color = ((windowColors[markersLength - 1][0]) << 0) + ((windowColors[markersLength - 1][1]) << 8) + ((windowColors[markersLength - 1][2]) << 16);
+					cv::Point pos2(pos.x - 15, pos.y - 15);
+					cv::circle(window, pos2, 15, cv::Scalar(255, 255, 255), -1);
+					cv::circle(window, pos2, 15, cv::Scalar(0, 0, 0), 1);
+					cvui::rect(window, pos2.x-10, pos2.y-10, 20, 20, 0x000000, color);
+				}
 				colorSet = true;
 				saveMsg[0] = 0;
 			}
@@ -158,15 +195,14 @@ int main()
 			if (markersToSave > 0) {
 				outfile.open("markers.csv", ios::out | ios::trunc);
 
-				char buf[10];
 				for (int i = 0; i < markersToSave; i++) {
 					if (i < markersLength-1) {
 						*(markerNames[i + 1] - 1) = 0;
-						outfile << markerNames[i] << ";" << static_cast<unsigned>(markerColors[i][0]) << ";" << static_cast<unsigned>(markerColors[i][1]) << ";" << static_cast<unsigned>(markerColors[i][2], buf, 10) << endl;
+						outfile << markerNames[i] << ";" << static_cast<unsigned>(markerColors[i][0]) << ";" << static_cast<unsigned>(markerColors[i][1]) << ";" << static_cast<unsigned>(markerColors[i][2], markerColorStringBuffer, 10) << endl;
 						*(markerNames[i + 1] - 1) = ',';
 					}
 					else {
-						outfile << markerNames[i] << ";" << static_cast<unsigned>(markerColors[i][0]) << ";" << static_cast<unsigned>(markerColors[i][1]) << ";" << static_cast<unsigned>(markerColors[i][2], buf, 10) << endl;
+						outfile << markerNames[i] << ";" << static_cast<unsigned>(markerColors[i][0]) << ";" << static_cast<unsigned>(markerColors[i][1]) << ";" << static_cast<unsigned>(markerColors[i][2], markerColorStringBuffer, 10) << endl;
 					}
 				}
 				outfile.close();
