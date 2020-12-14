@@ -33,5 +33,6 @@
   <ItemGroup>
     <None Include="opencv_videoio_ffmpeg440_64.dll" />
     <None Include="opencv_world440d.dll" />
+    <None Include="opencv_world440.dll" />
   </ItemGroup>
 </Project>

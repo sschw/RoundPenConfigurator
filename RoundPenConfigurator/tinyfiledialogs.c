@@ -841,7 +841,8 @@ static int dirExists(char const * aDirPath)
 
 static int fileExists(char const * aFilePathAndName)
 {
-        struct _stat lInfo;
+		// CHANGED TO _STAT64 TO FIX AN ERROR ON FILES > 4GB
+        struct _stat64 lInfo;
         wchar_t * lTmpWChar;
         int lStatRet;
         FILE * lIn;
@@ -854,7 +855,8 @@ static int fileExists(char const * aFilePathAndName)
         if (tinyfd_winUtf8)
         {
 			lTmpWChar = tinyfd_utf8to16(aFilePathAndName);
-            lStatRet = _wstat(lTmpWChar, &lInfo);
+			// CHANGED TO _WSTAT64 TO FIX AN ERROR ON FILES > 4GB
+            lStatRet = _wstat64(lTmpWChar, &lInfo);
             if (lStatRet != 0)
                     return 0;
             else if (lInfo.st_mode & _S_IFREG)
