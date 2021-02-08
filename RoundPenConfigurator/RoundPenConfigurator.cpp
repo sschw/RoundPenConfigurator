@@ -115,8 +115,11 @@ int main()
 	if (h1 <= 780) {
 		cv::resize(frame_full, frame, cv::Size(1900, (int)h1));
 	}
-	else {
+	else if (w2 <= 1900) {
 		cv::resize(frame_full, frame, cv::Size((int)w2, 780));
+	}
+	else {
+		cv::resize(frame_full, frame, cv::Size(1900, 780));
 	}
 
 	cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);
